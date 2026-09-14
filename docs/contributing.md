@@ -2,7 +2,7 @@
 
 ## Setup
 
-1. GitHub Desktop → **File → Clone repository → URL** → `https://github.com/Purple-Sigil/TVman`.
+1. GitHub Desktop → **File → Clone repository → URL** → `https://github.com/Sauce-stack/TVman`.
 2. Open `project.godot` with Godot 4.7.2 standard.
 
 The first open reimports every asset. `.godot/` is generated and ignored.
