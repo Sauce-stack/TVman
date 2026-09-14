@@ -5,8 +5,9 @@ Godot 4.7.2 · GDScript · 3D · Forward+ · Jolt Physics · Windows + macOS · 
 Third-person combat game with an over-the-shoulder camera. Nothing about the design is settled
 beyond that sentence — `docs/game-design.md` is where it gets written down.
 
-Repository: `github.com/Purple-Sigil/TVman` (public). The account's display name is *Sauce-stack*;
-its login, and the one every URL uses, is **Purple-Sigil**.
+Repository: `github.com/Sauce-stack/TVman` (public), owned by the **Sauce-stack** account. Commits
+and pushes are made from **Purple-Sigil**, which has access to it — GitHub Desktop holds one
+github.com account at a time, and Purple-Sigil is the one it is signed in with.
 
 ## Hard rules
 

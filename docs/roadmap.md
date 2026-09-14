@@ -4,7 +4,7 @@
 
 Exit criteria:
 
-- The repository exists on `Purple-Sigil/TVman`, with CI green on `main`.
+- The repository exists on `Sauce-stack/TVman`, with CI green on `main`.
 - `main` is protected: pull requests only, `CI gate` required.
 - The project opens in Godot 4.7.2 with no errors.
 
