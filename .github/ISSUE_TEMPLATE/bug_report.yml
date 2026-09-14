@@ -1,0 +1,49 @@
+name: Bug report
+description: Something behaves wrongly.
+title: "bug: "
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Aim at the dummy
+        2. Walk backwards into a wall
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options: [Windows, macOS]
+    validations:
+      required: true
+  - type: dropdown
+    id: input
+    attributes:
+      label: Input device
+      options: [Gamepad, Keyboard and mouse, Both]
+    validations:
+      required: true
+  - type: input
+    id: build
+    attributes:
+      label: Build or commit
+      placeholder: v0.1.0, or the short SHA
+  - type: textarea
+    id: log
+    attributes:
+      label: Godot output
+      render: shell

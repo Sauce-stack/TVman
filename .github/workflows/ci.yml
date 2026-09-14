@@ -1,0 +1,231 @@
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.7.2"
+
+jobs:
+  lint:
+    name: GDScript lint and format
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install gdtoolkit
+        run: pip install "gdtoolkit>=4.3,<5"
+
+      - name: Check formatting and lint
+        run: |
+          # addons/ is vendored third-party code, not ours to format.
+          files=$(git ls-files '*.gd' | grep -v '^addons/' || true)
+          if [ -z "$files" ]; then
+            echo "No GDScript files yet - skipping."
+            exit 0
+          fi
+          gdformat --check $files
+          gdlint $files
+
+  validate:
+    name: Import and validate project
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: ${{ env.GODOT_VERSION }}
+          use-dotnet: false
+          include-templates: false
+
+      # Godot exits 0 even when it logs import errors, so the grep below is the real gate.
+      - name: Import project resources
+        run: |
+          set -o pipefail
+          godot --headless --import --path "$GITHUB_WORKSPACE" > /dev/null 2>&1 || true
+          godot --headless --import --path "$GITHUB_WORKSPACE" 2>&1 | tee import.log
+
+      - name: Fail on any error or warning
+        run: |
+          if grep -nE '^(ERROR|WARNING|SCRIPT ERROR|USER ERROR|USER SCRIPT ERROR)' import.log; then
+            echo "::error::Godot reported errors or warnings while importing."
+            exit 1
+          fi
+          echo "Import clean."
+
+      - name: Verify physics layers and project settings
+        run: bash tools/run-check.sh tools/verify_project_config.gd
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: logs
+          path: import.log
+          retention-days: 7
+
+  guard:
+    name: Repository guard rails
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: No generated Godot cache in git
+        run: |
+          if git ls-files -- '.godot' '.godot/*' | grep -q .; then
+            echo "::error::.godot/ is tracked. It is generated cache and it holds export_credentials.cfg."
+            git ls-files -- '.godot' '.godot/*'
+            exit 1
+          fi
+
+      - name: No C# or .NET in the project
+        run: |
+          if git ls-files -- '*.cs' '*.csproj' '*.sln' | grep -q .; then
+            echo "::error::This project is GDScript only. Remove the C#/.NET files."
+            git ls-files -- '*.cs' '*.csproj' '*.sln'
+            exit 1
+          fi
+          if grep -q '^\[dotnet\]' project.godot; then
+            echo "::error::project.godot carries a [dotnet] block. See docs/decisions/0001."
+            exit 1
+          fi
+
+      - name: Import sidecars stay versioned
+        run: |
+          if git check-ignore -q -- assets/_probe.png.import; then
+            echo "::error::*.import sidecars are ignored. They carry resource UIDs and must be committed."
+            exit 1
+          fi
+          echo "Sidecars are versioned."
+
+      - name: Binary assets go through Git LFS
+        # .gitattributes decides what must be LFS; this checks the blob really is a pointer.
+        run: |
+          failed=0
+          while IFS= read -r -d '' path && IFS= read -r -d '' _attr && IFS= read -r -d '' value; do
+            [ "$value" = "lfs" ] || continue
+            if [ "$(git cat-file -s "HEAD:$path")" -gt 1024 ] \
+              || case "$(git cat-file blob "HEAD:$path")" in
+                   version\ https://git-lfs.github.com/spec/*) false ;;
+                   *) true ;;
+                 esac; then
+              echo "::error file=$path::$path is declared LFS in .gitattributes but was committed as a real blob."
+              failed=1
+            fi
+          done < <(git ls-files -z | git check-attr -z --stdin filter)
+          if [ "$failed" -ne 0 ]; then
+            echo "::error::Enable Git LFS, then re-add these files."
+            exit 1
+          fi
+          echo "Every LFS-declared file is a pointer."
+
+  pr-hygiene:
+    name: Pull request hygiene
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    env:
+      CONVENTIONAL: '^(art|build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9._-]+\))?!?: [^ ].{0,62}$'
+    steps:
+      - name: Conventional Commits title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if ! printf '%s' "$PR_TITLE" | grep -qE "$CONVENTIONAL"; then
+            echo "::error::PR title is not a Conventional Commit subject: $PR_TITLE"
+            exit 1
+          fi
+
+      - name: Conventional Commits subjects, no trailers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -o pipefail
+          gh api --paginate "repos/${{ github.repository }}/pulls/$PR_NUMBER/commits" \
+            --jq '.[] | select((.parents | length) < 2) | [.sha, (.commit.message | @base64)] | @tsv' \
+            > commits.tsv
+          failed=0
+          while IFS=$'\t' read -r sha encoded; do
+            message=$(printf '%s' "$encoded" | base64 -d)
+            subject=$(printf '%s\n' "$message" | head -1)
+            short=${sha:0:8}
+            if ! printf '%s' "$subject" | grep -qE "$CONVENTIONAL"; then
+              echo "::error::$short is not a Conventional Commit subject: $subject"
+              failed=1
+            fi
+            if printf '%s\n' "$message" | grep -qiE '^(Co-authored-by|Signed-off-by):'; then
+              echo "::error::$short carries a trailer. Subject line only, no co-author trailer."
+              failed=1
+            fi
+            if [ "$(printf '%s\n' "$message" | sed '/^[[:space:]]*$/d' | wc -l)" -gt 1 ]; then
+              echo "::warning::$short has a commit body. The convention is a subject line only."
+            fi
+          done < commits.tsv
+          exit $failed
+
+      # It asks only that the file was touched, not what was written. `no changelog` on the pull
+      # request is the way out, for a change a player could not notice.
+      - name: A change to the game is a line in the changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          set -o pipefail
+          if printf '%s' "$LABELS" | tr ',' '\n' | grep -qx 'no changelog'; then
+            echo "::notice::Labelled 'no changelog' - skipping."
+            exit 0
+          fi
+          gh api --paginate "repos/${{ github.repository }}/pulls/$PR_NUMBER/files" \
+            --jq '.[].filename' > files.txt
+          if ! grep -qE '^(scripts|scenes|data|assets)/' files.txt; then
+            echo "::notice::Nothing a player meets was changed - no entry needed."
+            exit 0
+          fi
+          if grep -qx 'CHANGELOG.md' files.txt; then
+            exit 0
+          fi
+          echo "::error::This changes the game and writes no changelog entry. Add one under" \
+            "'## [Unreleased]', or label the pull request 'no changelog'."
+          exit 1
+
+  gate:
+    name: CI gate
+    runs-on: ubuntu-24.04
+    needs: [lint, validate, guard, pr-hygiene]
+    if: always()
+    steps:
+      # The single required check in the ruleset, so adding a job never means editing the ruleset.
+      - name: Every job must have succeeded
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS"
+          bad=$(printf '%s' "$NEEDS" | jq -r 'to_entries
+            | map(select(.value.result != "success" and .value.result != "skipped") | .key)
+            | join(", ")')
+          if [ -n "$bad" ]; then
+            echo "::error::These jobs did not succeed: $bad"
+            exit 1
+          fi
+          echo "CI gate green."

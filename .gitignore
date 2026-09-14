@@ -1,0 +1,36 @@
+# Godot 4+
+.godot/
+/android/
+
+# NOTE: the per-asset *.import sidecars MUST be committed - they carry resource UIDs.
+
+# gdUnit4 writes a run report next to the project.
+reports/
+
+# Builds
+build/
+export/
+*.translation
+
+# Steam (dev-only, never commit)
+steam_appid.txt
+
+# Blender backups
+*.blend1
+*.blend2
+*.blend3
+
+# Secrets
+.env
+.env.*
+
+# Claude Code. The shared setup is versioned on purpose, so every contributor and every
+# session inherits it.
+!.claude/
+.claude/settings.local.json
+.claude/worktrees/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,46 @@
+# Normalize EOL for all files that Git considers text files.
+* text=auto eol=lf
+
+# Godot text resources — text, but they merge badly. See docs/contributing.md.
+*.tscn text
+*.tres text
+*.godot text
+*.import text
+*.gd text diff=gdscript
+
+# Binary assets go through Git LFS. `git lfs install` must run before the first art commit.
+*.blend filter=lfs diff=lfs merge=lfs -text
+*.glb   filter=lfs diff=lfs merge=lfs -text
+*.gltf  filter=lfs diff=lfs merge=lfs -text
+*.fbx   filter=lfs diff=lfs merge=lfs -text
+*.png   filter=lfs diff=lfs merge=lfs -text
+*.jpg   filter=lfs diff=lfs merge=lfs -text
+*.exr   filter=lfs diff=lfs merge=lfs -text
+*.hdr   filter=lfs diff=lfs merge=lfs -text
+*.wav   filter=lfs diff=lfs merge=lfs -text
+*.ogg   filter=lfs diff=lfs merge=lfs -text
+*.mp3   filter=lfs diff=lfs merge=lfs -text
+*.ogv   filter=lfs diff=lfs merge=lfs -text
+*.ttf   filter=lfs diff=lfs merge=lfs -text
+*.otf   filter=lfs diff=lfs merge=lfs -text
+
+# Binary Godot resources - generated meshes and the like. The text .tres format stays text.
+*.res   filter=lfs diff=lfs merge=lfs -text
+*.scn   filter=lfs diff=lfs merge=lfs -text
+*.mesh  filter=lfs diff=lfs merge=lfs -text
+
+# The project icon stays in git proper — it is tiny and it is text.
+icon.svg -filter -diff -merge text
+
+# Shell scripts run on Linux CI; a CRLF shebang fails there.
+*.sh text eol=lf
+
+# Git's line merge produces syntactically valid but semantically wrong output on
+# these (duplicated input actions, renumbered export presets). Force a conflict.
+project.godot      -merge
+export_presets.cfg -merge
+
+# Vendored addons keep their files as plain blobs. All three of filter, diff and merge are unset:
+# unsetting filter alone leaves `*.png` claiming diff/merge=lfs, and a pointer then checks out as
+# its own literal text, which Godot reports as ERR_FILE_CORRUPT.
+addons/** -filter -diff -merge
