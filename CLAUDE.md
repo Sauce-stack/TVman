@@ -5,9 +5,8 @@ Godot 4.7.2 · GDScript · 3D · Forward+ · Jolt Physics · Windows + macOS · 
 Third-person combat game with an over-the-shoulder camera. Nothing about the design is settled
 beyond that sentence — `docs/game-design.md` is where it gets written down.
 
-Repository: `github.com/Sauce-stack/TVman` (public), owned by the **Sauce-stack** account. Commits
-and pushes are made from **Purple-Sigil**, which has access to it — GitHub Desktop holds one
-github.com account at a time, and Purple-Sigil is the one it is signed in with.
+Repository: `github.com/Sauce-stack/TVman` (public), owned by the **Sauce-stack** account. The local
+git identity carries the name *Purple-Sigil*, and GitHub attributes those commits to Sauce-stack.
 
 ## Hard rules
 
@@ -21,6 +20,9 @@ github.com account at a time, and Purple-Sigil is the one it is signed in with.
 - **`project.godot` is rewritten by the editor** on almost every save and strips anything it did not
   write. Never put explanatory comments in the `[input]` block — they live in `docs/input-map.md`.
 - Do not create `.tscn` scenes or gameplay `.gd` scripts unless the task explicitly asks.
+- **Working files never go in `assets/`.** `.blend`, `.fbx` and texture sources live in
+  `art-source/`, which has a `.gdignore`. The game loads one `.glb` per character from
+  `assets/characters/<name>/`. See `docs/decisions/0003-gltf-over-blend.md` and `docs/animation.md`.
 
 ## File naming — this overrides the global kebab-case rule
 
@@ -82,6 +84,8 @@ This is a decision, not drift. See `docs/decisions/0002-godot-file-naming.md`.
 - `git` is not on PATH either. GitHub Desktop bundles one:
   `C:\Users\Suste\AppData\Local\GitHubDesktop\app-<version>\resources\app\git\cmd\git.exe`.
   `gh` is not installed; pull requests are opened from GitHub Desktop.
+- **Blender 5.1** is installed and is where every clip is authored — never edit an animation in
+  Godot, the next export overwrites it.
 - **Never write source files with PowerShell `Set-Content`** — it mangles UTF-8 (em-dashes).
 - **CI is the only source of shippable binaries.** Never treat a local export as a release.
 
