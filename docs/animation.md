@@ -43,7 +43,7 @@ The rig is what decides whether the rest is possible. It needs, as **deform bone
 | `neck`, `head` | The head look |
 | `shoulder`, `upper_arm`, `forearm`, `hand` — `.L` and `.R` | Arms |
 | `thigh`, `shin`, `foot`, `toe` — `.L` and `.R` | Legs; `toe` lets a foot roll off the ground |
-| `cable_01` … `cable_08`, then `plug` | The tail, from the lower back to the plug |
+| `cable_01` … `cable_08`, then `plug` | The cable, from the back of the television head to the plug |
 | `katana` | **The katana's own bone** — keyed in every clip, like an arm |
 | `socket_back`, `sway_katana_01`, `sway_katana_02` | Where the sheathed katana hangs, and its swing |
 
