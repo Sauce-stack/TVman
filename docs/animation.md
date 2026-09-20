@@ -45,7 +45,7 @@ The rig is what decides whether the rest is possible. It needs, as **deform bone
 | `thigh`, `shin`, `foot`, `toe` — `.L` and `.R` | Legs; `toe` lets a foot roll off the ground |
 | `cable_01` … `cable_08`, then `plug` | The cable, from the back of the television head to the plug |
 | `katana` | **The katana's own bone** — keyed in every clip, like an arm |
-| `saya`, child of `hips` | The scabbard, worn **across the hips**. The sheathed katana rides it |
+| `cord_01`, `cord_02`, then `saya` | The scabbard **hangs from a cord** off the shoulder. The sheathed katana rides `saya` |
 
 ## The katana: one bone in the rig, one mesh of its own
 
@@ -91,11 +91,13 @@ both sides. That carry is the design, and it decides most of what follows.
   of the arc before settling — two keys, and it is the difference between a stick and a sword.
 - **Key it back onto the hub pose like any other bone.** A swing that ends with the blade a few
   degrees off `guard` snaps on the next attack.
-- **Sheathed, it belongs to `saya` and `saya` belongs to `hips`.** Walking and running cost no keys
-  at all: it turns with the pelvis, which is what a belt-worn sword does.
-- **Worn flat, it clears the floor and hits the world instead.** Nothing to solve when crouching —
-  the blade is horizontal — but two metres of steel through the hips means it crosses doorways,
-  cover and the camera. The camera's shoulder swap decides which side it cuts across the frame.
+- **Sheathed, it dangles.** The scabbard hangs from a cord off the shoulder rather than sitting in a
+  belt, so `cord_01…02` are simulated and the sword swings, lags and settles on its own. Clamp the
+  angles hard: a two-metre pendulum wants to swing much further than a sword ever should, and give
+  the simulator a collision shape at the legs so it cannot pass through them.
+- **Hanging flat, it clears the floor and hits the world instead.** Nothing to solve when crouching
+  — the blade is horizontal — but two metres of steel across the hips crosses doorways, cover and
+  the camera. The camera's shoulder swap decides which side it cuts across the frame.
 - **Rolling and sliding are where the hand takes the scabbard.** TVman grips `saya` with the off
   hand and swings it clear, the way a real swordsman does. A constraint from `hand.L` to `saya`,
   keyed on for those clips.
