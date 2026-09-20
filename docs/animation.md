@@ -45,7 +45,7 @@ The rig is what decides whether the rest is possible. It needs, as **deform bone
 | `thigh`, `shin`, `foot`, `toe` — `.L` and `.R` | Legs; `toe` lets a foot roll off the ground |
 | `cable_01` … `cable_08`, then `plug` | The cable, from the back of the television head to the plug |
 | `katana` | **The katana's own bone** — keyed in every clip, like an arm |
-| `socket_back`, `sway_katana_01`, `sway_katana_02` | Where the sheathed katana hangs, and its swing |
+| `saya`, child of `hips` | The scabbard, worn **across the hips**. The sheathed katana rides it |
 
 ## The katana: one bone in the rig, one mesh of its own
 
@@ -63,13 +63,13 @@ through NLA tracks, which is a trap Fight Island fell into.
 - **Collision, the cable's anchor and the swing's trail** live in `katana.tscn`, where they belong.
 
 **Where the bone hangs from changes with the state.** Two *Child Of* constraints on the `katana`
-bone, `hand.R` and `sway_katana_02`, with their influence keyed: drawing and sheathing are that
-influence crossing over, on the frame the clip says so. The export samples the result, so no
-constraint ever reaches Godot.
+bone, `hand.R` and `saya`, with their influence keyed: drawing and sheathing are that influence
+crossing over, on the frame the clip says so. The export samples the result, so no constraint ever
+reaches Godot.
 
-**Tick *Deform* on `katana` and on every socket and sway bone.** The export keeps deform bones only,
-and a socket nothing is skinned to is dropped without a word — leaving the attachment with nothing
-to follow.
+**Tick *Deform* on `katana`, `saya` and every other socket bone.** The export keeps deform bones
+only, and a socket nothing is skinned to is dropped without a word — leaving the attachment with
+nothing to follow.
 
 **Keep a proxy blade in Blender**, parented to the `katana` bone, in a collection excluded from the
 export. It is what lets you see the arcs while keying; what ships is the bone's motion.
@@ -82,9 +82,8 @@ the export keeps deform bones only.
 
 ## Animating a long blade
 
-The katana is nearly as tall as TVman and it hangs off his back. That length is the whole problem:
-it reaches the ground, it crosses the legs, and it is the first thing a camera over the shoulder
-sees.
+The katana is as tall as TVman, and he wears it **horizontally across the hips**, sticking out on
+both sides. That carry is the design, and it decides most of what follows.
 
 - **The pivot is the grip, and the blade runs along −Z.** Every rule below assumes it.
 - **The bone lags the hand by a frame or two on a swing.** A blade that turns exactly with the wrist
@@ -92,13 +91,16 @@ sees.
   of the arc before settling — two keys, and it is the difference between a stick and a sword.
 - **Key it back onto the hub pose like any other bone.** A swing that ends with the blade a few
   degrees off `guard` snaps on the next attack.
-- **On the back, the game swings it, not you.** `sway_katana_01…02` are simulated, tightly clamped,
-  so walking and running cost no keys. Author the sheathed blade only where the simulation is turned
-  off: rolling, sliding, crouching, drawing, sheathing.
-- **Crouching, rolling and sliding are where it hits the floor.** Each of those states keys the
-  `katana` bone into a steeper angle. Check it against the ground, not in the viewport's void.
-- **Drawing is the clip that costs the most.** A blade that long cannot be pulled straight out
-  overhand: TVman has to tip the scabbard forward, or draw across the body. Solve it in the draw
+- **Sheathed, it belongs to `saya` and `saya` belongs to `hips`.** Walking and running cost no keys
+  at all: it turns with the pelvis, which is what a belt-worn sword does.
+- **Worn flat, it clears the floor and hits the world instead.** Nothing to solve when crouching —
+  the blade is horizontal — but two metres of steel through the hips means it crosses doorways,
+  cover and the camera. The camera's shoulder swap decides which side it cuts across the frame.
+- **Rolling and sliding are where the hand takes the scabbard.** TVman grips `saya` with the off
+  hand and swings it clear, the way a real swordsman does. A constraint from `hand.L` to `saya`,
+  keyed on for those clips.
+- **Drawing is the clip that costs the most.** A blade that long does not clear a horizontal
+  scabbard by pulling: the scabbard has to swing back as the arm goes forward. Solve it in the draw
   and the sheathe, once, and every other clip inherits the answer.
 - **The off hand sticks to the hilt with a constraint**, never by eye — key its influence on and off
   for two-handed moments. Sampling bakes it at export.
