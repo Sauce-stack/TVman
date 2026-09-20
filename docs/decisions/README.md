@@ -9,3 +9,4 @@ Format: `# NNNN — Title`, then **Status** (Accepted · Proposed · Superseded)
 |---|---|
 | [0001](0001-gdscript-over-csharp.md) | GDScript, not C# |
 | [0002](0002-godot-file-naming.md) | Godot file naming overrides the global kebab-case rule |
+| [0003](0003-gltf-over-blend.md) | Working files in `art-source/`, a `.glb` per character in `assets/` |
