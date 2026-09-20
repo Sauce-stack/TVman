@@ -23,7 +23,9 @@ not computed.
 |---|---|
 | Working file | `art-source/characters/tvman/char_tvman.blend` |
 | Working textures | `art-source/characters/tvman/textures/` |
+| Katana working file | `art-source/weapons/katana/weapon_katana.blend` |
 | What the game loads | `assets/characters/tvman/char_tvman.glb` |
+| | `assets/weapons/katana/weapon_katana.glb` |
 
 `art-source/` carries a `.gdignore`, so Godot never tries to import a `.blend` — which it can only do
 by launching Blender, on every machine and on CI. The `.glb` is the contract; see
@@ -41,21 +43,65 @@ The rig is what decides whether the rest is possible. It needs, as **deform bone
 | `neck`, `head` | The head look |
 | `shoulder`, `upper_arm`, `forearm`, `hand` — `.L` and `.R` | Arms |
 | `thigh`, `shin`, `foot`, `toe` — `.L` and `.R` | Legs; `toe` lets a foot roll off the ground |
-| `katana` | **The katana is a bone, not a separate object** — see below |
 | `cable_01` … `cable_08`, then `plug` | The tail, from the lower back to the plug |
-| `socket_back` | Where the sheathed katana rests |
+| `katana` | **The katana's own bone** — keyed in every clip, like an arm |
+| `socket_back`, `sway_katana_01`, `sway_katana_02` | Where the sheathed katana hangs, and its swing |
 
-**The katana is a bone** because a separate object animated by the clips only exports through NLA
-tracks, which is a trap Fight Island fell into. As a bone, it lives in every action like an arm does.
-In Blender, give it two *Child Of* constraints — `hand.R` and `socket_back` — and key their influence
-to move it from the back to the hand. The export samples the result, so the constraints never reach
-Godot.
+## The katana: one bone in the rig, one mesh of its own
+
+**The katana is a bone**, so a swing is authored the way the rest of the body is — the blade's arc is
+keyed, not deduced from the wrist. An object animated by the clips instead of a bone only exports
+through NLA tracks, which is a trap Fight Island fell into.
+
+**The mesh is not skinned into TVman.** It is its own `.glb` and its own scene, riding a
+`BoneAttachment3D` that follows the `katana` bone. Three things depend on that:
+
+- **A TVman without a katana is the same file** — the weapon is simply not instanced. There is no
+  second export to keep in step.
+- **A thrown katana leaves the body.** The very same node is reparented to the world, plants in a
+  wall, hangs on the cable and comes back. Nothing is swapped, so nothing can pop.
+- **Collision, the cable's anchor and the swing's trail** live in `katana.tscn`, where they belong.
+
+**Where the bone hangs from changes with the state.** Two *Child Of* constraints on the `katana`
+bone, `hand.R` and `sway_katana_02`, with their influence keyed: drawing and sheathing are that
+influence crossing over, on the frame the clip says so. The export samples the result, so no
+constraint ever reaches Godot.
+
+**Tick *Deform* on `katana` and on every socket and sway bone.** The export keeps deform bones only,
+and a socket nothing is skinned to is dropped without a word — leaving the attachment with nothing
+to follow.
+
+**Keep a proxy blade in Blender**, parented to the `katana` bone, in a collection excluded from the
+export. It is what lets you see the arcs while keying; what ships is the bone's motion.
 
 **The cable is a bone chain** so it can be animated by hand in the attacks that fight with it, and
 handed to the simulation everywhere else — see *Procedural* below.
 
 Control bones — IK targets, pole targets, a Rigify control rig — are welcome, and **never exported**:
 the export keeps deform bones only.
+
+## Animating a long blade
+
+The katana is nearly as tall as TVman and it hangs off his back. That length is the whole problem:
+it reaches the ground, it crosses the legs, and it is the first thing a camera over the shoulder
+sees.
+
+- **The pivot is the grip, and the blade runs along −Z.** Every rule below assumes it.
+- **The bone lags the hand by a frame or two on a swing.** A blade that turns exactly with the wrist
+  has no weight. Offset its rotation keys slightly after the arm's, and let it overshoot at the end
+  of the arc before settling — two keys, and it is the difference between a stick and a sword.
+- **Key it back onto the hub pose like any other bone.** A swing that ends with the blade a few
+  degrees off `guard` snaps on the next attack.
+- **On the back, the game swings it, not you.** `sway_katana_01…02` are simulated, tightly clamped,
+  so walking and running cost no keys. Author the sheathed blade only where the simulation is turned
+  off: rolling, sliding, crouching, drawing, sheathing.
+- **Crouching, rolling and sliding are where it hits the floor.** Each of those states keys the
+  `katana` bone into a steeper angle. Check it against the ground, not in the viewport's void.
+- **Drawing is the clip that costs the most.** A blade that long cannot be pulled straight out
+  overhand: TVman has to tip the scabbard forward, or draw across the body. Solve it in the draw
+  and the sheathe, once, and every other clip inherits the answer.
+- **The off hand sticks to the hilt with a constraint**, never by eye — key its influence on and off
+  for two-handed moments. Sampling bakes it at export.
 
 ## The five rules that make clips blend
 
@@ -149,6 +195,7 @@ Try the crossfade in the game first. Author only what looks wrong.
 |---|---|---|
 | **Head and chest follow the camera** | `LookAtModifier3D` on `head`, and smaller shares on `neck`, `upper_chest`, `chest`, all clamped | Faded out during attacks, executions and the grab |
 | **Cable and plug swing** | `SpringBoneSimulator3D` on `cable_01…plug` | Faded out in the attacks that animate the cable by hand |
+| **The sheathed katana lags and bounces** | `SpringBoneSimulator3D` on `sway_katana_01…02`, tightly clamped | Off while drawing, sheathing, rolling and sliding, where the clip owns the blade |
 | **Cable reaching a point** — a thrown katana, an anchor, a socket, an enemy | Code drives the chain toward the target | The whole time the cable is attached to something in the world |
 | **Feet on uneven ground** | Two-bone IK on the legs | Later — not needed on flat ground |
 
